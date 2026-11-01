@@ -88,6 +88,8 @@ static void settingsJson(JsonDocument& d) {
   d["smoothing"] = (int)settings.smoothing;
   d["alertMode"] = (int)settings.alertMode;
   d["alertLimit"] = settings.alertLimit;
+  d["idleDimMin"] = settings.idleDimMin;
+  d["idleOffMin"] = settings.idleOffMin;
   d["wifiEnabled"] = settings.wifiEnabled;
   d["telemetryEnabled"] = settings.telemetryEnabled;
   d["apiUrl"] = settings.apiUrl;
@@ -135,6 +137,8 @@ static void hPostSettings() {
   if (in["gpsHz"].is<int>()) { int hz = in["gpsHz"]; settings.gpsHz = hz >= 10 ? 10 : (hz >= 5 ? 5 : 1); }
   if (in["smoothing"].is<int>()) settings.smoothing = (Smoothing)constrain(in["smoothing"].as<int>(), 0, 2);
   if (in["alertMode"].is<int>()) settings.alertMode = (AlertMode)constrain(in["alertMode"].as<int>(), 0, 2);
+  if (in["idleDimMin"].is<int>()) settings.idleDimMin = constrain(in["idleDimMin"].as<int>(), 0, 60);
+  if (in["idleOffMin"].is<int>()) settings.idleOffMin = constrain(in["idleOffMin"].as<int>(), 0, 60);
   if (in["alertLimit"].is<int>()) settings.alertLimit = constrain(in["alertLimit"].as<int>(), 0, 200);
   if (in["wifiEnabled"].is<bool>()) settings.wifiEnabled = in["wifiEnabled"];
   if (in["preferHome"].is<bool>()) settings.preferHome = in["preferHome"];
@@ -242,6 +246,10 @@ static void hStatus() {
   d["bright"] = liveData.brightnessPct;
   d["night"] = liveData.night;
   d["battery"] = liveData.battery;
+  d["usb"] = liveData.usbPower;
+  d["charging"] = liveData.charging;
+  d["vbus"] = liveData.vbusMv;
+  d["screen"] = liveData.screen;
   d["wifi"] = WiFi.status() == WL_CONNECTED;
   d["ssid"] = WiFi.SSID();
   d["ip"] = WiFi.localIP().toString();

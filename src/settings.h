@@ -48,7 +48,9 @@ struct Settings {
   uint8_t alertLimit = 0;           // in display units, 0 = off
   BrightMode brightMode = BrightMode::AutoSun;
   uint8_t fixedLevel = 0;           // index into brightness steps (0 = brightest)
-  int8_t brightOffset = 0;          // user nudge, steps (-2..+1)
+  int8_t brightOffset = 0;          // user nudge, steps
+  uint8_t idleDimMin = 3;           // stationary this many minutes -> dim (0 = never)
+  uint8_t idleOffMin = 1;           // then this many more minutes -> screen off (0 = stay dimmed)
   uint8_t design = DESIGN_A;        // chosen design for daytime
   bool autoNight = true;            // switch to D automatically when the sun is low
   float nightBelowDeg = -3.0f;      // sun elevation below which autoNight switches to D

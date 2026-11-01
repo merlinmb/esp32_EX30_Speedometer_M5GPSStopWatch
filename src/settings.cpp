@@ -21,7 +21,7 @@
 Settings settings;
 
 static constexpr uint32_t SETTINGS_MAGIC = 0x53504431;  // "SPD1"
-static constexpr uint16_t SETTINGS_VERSION = 3;
+static constexpr uint16_t SETTINGS_VERSION = 4;
 
 struct DayPreset { const char* name; ThemeColours c; };
 
@@ -85,6 +85,8 @@ void settingsLoad() {
   // Sanity checks in case of a partly written blob
   if (settings.design >= DESIGN_COUNT) settings.design = DESIGN_A;
   if (settings.gpsHz != 1 && settings.gpsHz != 5 && settings.gpsHz != 10) settings.gpsHz = 10;
+  if (settings.idleDimMin > 60) settings.idleDimMin = 3;
+  if (settings.idleOffMin > 60) settings.idleOffMin = 1;
   if (settings.sampleSec < 1) settings.sampleSec = 5;
   if (settings.uploadSec < 2) settings.uploadSec = 10;
   settings.apiUrl[sizeof(settings.apiUrl) - 1] = 0;

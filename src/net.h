@@ -30,5 +30,9 @@ struct LiveData {
   uint8_t brightnessPct = 100;
   bool night = false;
   int battery = 0;
+  bool usbPower = false;
+  bool charging = false;
+  int vbusMv = -1;
+  uint8_t screen = 0;   // 0 on, 1 dimmed, 2 off
 };
 extern LiveData liveData;

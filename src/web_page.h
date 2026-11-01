@@ -60,6 +60,8 @@ button.sec{background:#25303a;color:var(--txt)}
 <label>Smoothing<select id="smoothing"><option value="0">Low</option><option value="1">Medium</option><option value="2">High</option></select></label>
 <label>Speed alert<select id="alertMode"><option value="0">Off</option><option value="1">Vibrate</option><option value="2">Vibrate and tone</option></select></label>
 <label>Alert limit (0 = off)<input type="number" id="alertLimit" min="0" max="200" step="1"></label>
+<label>Dim after stopped for (min, 0 = never)<input type="number" id="idleDimMin" min="0" max="60"></label>
+<label>Then screen off after (min, 0 = stay dim)<input type="number" id="idleOffMin" min="0" max="60"></label>
 </section>
 
 <section><h2>Colours</h2>
@@ -90,7 +92,7 @@ const $=id=>document.getElementById(id);
 function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
 async function get(u){const r=await fetch(u);return r.json()}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return r.json()}
-const FIELDS=['units','design','nightBelowDeg','brightMode','fixedLevel','gpsHz','smoothing','alertMode','alertLimit','apiUrl','sampleSec','uploadSec','deviceName','tz'];
+const FIELDS=['units','design','nightBelowDeg','brightMode','fixedLevel','gpsHz','smoothing','alertMode','alertLimit','idleDimMin','idleOffMin','apiUrl','sampleSec','uploadSec','deviceName','tz'];
 const CHECKS=['wifiEnabled','telemetryEnabled','preferHome','autoNight'];
 async function load(){S=await get('/api/settings');P=await get('/api/presets');
 FIELDS.forEach(f=>{if($(f))$(f).value=S[f]});CHECKS.forEach(f=>$(f).checked=!!S[f]);
@@ -125,7 +127,7 @@ $('scanstate').textContent='';const d=$('scan');d.innerHTML='';(r.networks||[]).
 e.innerHTML='<span>'+esc(n.ssid)+' <span class="sub">'+n.rssi+' dBm'+(n.open?' open':'')+'</span></span>';const g=document.createElement('span');g.className='row';[0,1].forEach(i=>{const b=document.createElement('button');b.className='sec';b.textContent='Use as '+(i+1);
 b.onclick=()=>{$('n'+i).value=n.ssid;$('p'+i).value='';$('p'+i).focus();toast('Enter the password, then save network '+(i+1))};g.appendChild(b)});e.appendChild(g);d.appendChild(e)})}
 async function live(){try{const l=await get('/api/status');
-$('live').textContent=(l.fix?l.speed+' '+(S.units==1?'km/h':'mph'):'No GPS fix')+' · '+l.sats+' sats · '+l.hz.toFixed(1)+' Hz · brightness '+l.bright+'%'+(l.night?' (night)':'')+' · battery '+l.battery+'%';
+$('live').textContent=(l.fix?l.speed+' '+(S.units==1?'km/h':'mph'):'No GPS fix')+' · '+l.sats+' sats · '+l.hz.toFixed(1)+' Hz · brightness '+l.bright+'%'+(l.night?' (night)':'')+' · battery '+l.battery+'%'+(l.usb?(l.charging?' (USB, charging)':' (USB)'):' (on battery)')+(l.screen==2?' · screen off':l.screen==1?' · screen dimmed':'');
 $('wifistate').textContent=l.wifi?('Connected to '+l.ssid+' ('+l.ip+', '+l.rssi+' dBm)'):'Not connected to Wi-Fi';
 $('tele').textContent='Queued '+l.queued+', sent '+l.sent+', last HTTP '+l.http}catch(e){}}
 load();live();setInterval(live,2000);

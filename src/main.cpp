@@ -11,6 +11,8 @@
 // Touch zones: centre = status page on/off, top = brighter, bottom = dimmer,
 //              right = next design, left = previous design
 // In settings: A next item, B change value, hold B save and exit.
+// Stopped for 'Dim screen' minutes -> dims; 'Screen off' minutes later -> display off.
+// Movement over ~3 mph for 3 s, USB power returning, or any key/touch wakes it.
 
 #include <M5Unified.h>
 #include <time.h>
@@ -182,6 +184,26 @@ static void vTele(char* b, size_t n) {
   else snprintf(b, n, "%s", settings.telemetryEnabled ? "On" : "Off");
 }
 static void cTele() { settings.telemetryEnabled = !settings.telemetryEnabled; }
+static void vIdleDim(char* b, size_t n) {
+  if (!settings.idleDimMin) snprintf(b, n, "Never");
+  else snprintf(b, n, "After %u min stopped", settings.idleDimMin);
+}
+static void cIdleDim() {
+  static const uint8_t V[] = {0, 1, 2, 3, 5, 10, 15, 30};
+  int i = 0;
+  for (int k = 0; k < 8; k++) if (V[k] == settings.idleDimMin) i = k;
+  settings.idleDimMin = V[(i + 1) % 8];
+}
+static void vIdleOff(char* b, size_t n) {
+  if (!settings.idleOffMin) snprintf(b, n, "Stay dimmed");
+  else snprintf(b, n, "%u min after dimming", settings.idleOffMin);
+}
+static void cIdleOff() {
+  static const uint8_t V[] = {0, 1, 2, 5, 10, 30};
+  int i = 0;
+  for (int k = 0; k < 6; k++) if (V[k] == settings.idleOffMin) i = k;
+  settings.idleOffMin = V[(i + 1) % 6];
+}
 static void resetTrip();
 static void vTrip(char* b, size_t n) { snprintf(b, n, "Press B to reset"); }
 static void cTrip() { resetTrip(); showToast("Trip reset"); }
@@ -193,6 +215,8 @@ static const MenuItem MENU[] = {
   {"Day colours", vDayCol, cDayCol},
   {"Night colours", vNightCol, cNightCol},
   {"Brightness", vBright, cBright},
+  {"Dim screen", vIdleDim, cIdleDim},
+  {"Screen off", vIdleOff, cIdleOff},
   {"GPS updates", vHz, cHz},
   {"Smoothing", vSmooth, cSmooth},
   {"Speed alert", vAlert, cAlert},
@@ -216,6 +240,85 @@ static void applySettingsChanges() {
   filter.setLevel((uint8_t)settings.smoothing);
   if (appliedHz != settings.gpsHz) { gpsSetRate(settings.gpsHz); appliedHz = settings.gpsHz; }
   applyTz();
+}
+
+// ---------------- inactivity: dim, then screen off ----------------
+// The car counts as stopped unless the smoothed speed stays above ~3 mph for 3 s, so GPS
+// jitter while parked never resets the timer. Any key, touch, real movement or USB power
+// coming on (car switched on) wakes the screen. The first key/touch on a dark screen only wakes it.
+enum class Screen : uint8_t { On, Dimmed, Off };
+static Screen screen = Screen::On;
+static uint32_t lastActivityMs = 0;
+static uint32_t movingSince = 0;
+static uint32_t swallowUntil = 0;     // ignore input until this time (after a wake-up press)
+static float dimFactor = 1.0f;
+static bool usbPower = false, charging = false;
+static int vbusMv = -1;
+
+static constexpr float MOVING_MS = 1.34f;          // ~3 mph
+static constexpr uint32_t MOVING_CONFIRM_MS = 3000;
+
+static void wakeScreen(uint32_t now) {
+  lastActivityMs = now;
+  if (screen == Screen::Off) {
+    M5.Display.wakeup();
+    memset(&lastModel, 0xFF, sizeof(lastModel));   // force a full redraw
+  }
+  screen = Screen::On;
+}
+
+static void updatePower(uint32_t now) {
+  static uint32_t last = 0;
+  if (last && now - last < 2000) return;
+  last = now;
+  bool wasUsb = usbPower;
+  vbusMv = M5.Power.getVBUSVoltage();
+  charging = M5.Power.isCharging() == m5::Power_Class::is_charging_t::is_charging;
+  usbPower = vbusMv > 4000 || (vbusMv < 0 && charging);
+  if (usbPower && !wasUsb && last != 0) wakeScreen(now);   // car switched on
+}
+
+static void updateIdle(uint32_t now, float speedMs, bool busy) {
+  // Real movement: above the threshold continuously for a few seconds
+  if (speedMs > MOVING_MS) {
+    if (!movingSince) movingSince = now;
+    if (now - movingSince >= MOVING_CONFIRM_MS) wakeScreen(now);
+  } else {
+    movingSince = 0;
+  }
+  if (busy || settings.idleDimMin == 0) { if (screen != Screen::On) wakeScreen(now); else lastActivityMs = now; }
+
+  uint32_t idle = now - lastActivityMs;
+  uint32_t dimAt = (uint32_t)settings.idleDimMin * 60000UL;
+  uint32_t offAt = dimAt + (uint32_t)settings.idleOffMin * 60000UL;
+  if (screen == Screen::On && settings.idleDimMin && idle >= dimAt) screen = Screen::Dimmed;
+  if (screen == Screen::Dimmed && settings.idleOffMin && idle >= offAt) {
+    screen = Screen::Off;
+    M5.Display.sleep();
+  }
+
+  // Ease the dim level so it fades rather than jumps
+  static uint32_t lastMs = 0;
+  float dt = lastMs ? (now - lastMs) / 1000.0f : 0;
+  lastMs = now;
+  float target = screen == Screen::On ? 1.0f : 0.25f;
+  float k = target < dimFactor ? dt / 2.0f : dt / 0.3f;   // dim over ~2 s, brighten in ~0.3 s
+  dimFactor += (target - dimFactor) * fminf(1.0f, k);
+  if (fabsf(target - dimFactor) < 0.01f) dimFactor = target;
+}
+
+// Returns true when this loop's input should be ignored (it was used to wake the screen).
+static bool inputWakeFilter(uint32_t now) {
+  auto t = M5.Touch.getDetail();
+  bool pressed = M5.BtnA.isPressed() || M5.BtnB.isPressed() || t.isPressed();
+  bool newPress = M5.BtnA.wasPressed() || M5.BtnB.wasPressed() || t.wasPressed();
+  if (newPress) {
+    if (screen != Screen::On) { wakeScreen(now); swallowUntil = UINT32_MAX; vibrate({20}); }
+    else lastActivityMs = now;
+  }
+  if (swallowUntil == UINT32_MAX && !pressed) swallowUntil = now + 600;  // let click detection expire
+  if (pressed) lastActivityMs = now;
+  return now < swallowUntil;
 }
 
 // ---------------- design selection ----------------
@@ -462,6 +565,7 @@ void setup() {
   telemetryBegin();
   netBegin();
   memset(&lastModel, 0xFF, sizeof(lastModel));
+  lastActivityMs = millis();
 }
 
 void loop() {
@@ -501,8 +605,13 @@ void loop() {
   int speedInt = filter.displayInt(unitsPerMs);
   float speedUnits = filter.filteredMs() * unitsPerMs;
 
-  handleButtons(now, speedUnits);
-  handleTouch(now);
+  updatePower(now);
+  bool busy = overlay == Overlay::Settings || overlay == Overlay::WifiSetup || netOtaProgress >= 0;
+  updateIdle(now, filter.filteredMs(), busy);
+  if (!inputWakeFilter(now)) {
+    handleButtons(now, speedUnits);
+    handleTouch(now);
+  }
   hapticTick(now);
   hapticFinish(now);
 
@@ -511,8 +620,9 @@ void loop() {
   float lat = gps.fix ? gps.lat : settings.lastLat;
   float lon = gps.fix ? gps.lon : settings.lastLon;
   brightness.update(utc, timeSet, lat, lon, now);
-  if (brightness.level() != lastBrightSent) {
-    lastBrightSent = brightness.level();
+  uint8_t wantLevel = (uint8_t)max(4.0f, brightness.level() * dimFactor);
+  if (screen != Screen::Off && wantLevel != lastBrightSent) {
+    lastBrightSent = wantLevel;
     M5.Display.setBrightness(lastBrightSent);
   }
   if (brightness.nightDesign() != lastNightState) { lastNightState = brightness.nightDesign(); nightPick = -1; }
@@ -555,10 +665,15 @@ void loop() {
   liveData.brightnessPct = brightness.percent();
   liveData.night = night;
   liveData.battery = batteryPct;
+  liveData.usbPower = usbPower;
+  liveData.charging = charging;
+  liveData.vbusMv = vbusMv;
+  liveData.screen = (uint8_t)screen;
 
   if (overlay == Overlay::Status && now > overlayUntil) overlay = Overlay::None;
 
   // --- build the frame ---
+  if (screen == Screen::Off) { delay(20); return; }   // nothing to draw; GPS, Wi-Fi and API keep running
   static uint32_t lastFrame = 0;
   if (now - lastFrame < 33) { delay(1); return; }  // ~30 fps cap
   lastFrame = now;
@@ -639,7 +754,8 @@ void loop() {
     float maxU = settings.tripMaxMs * unitsPerMs;
     float avgU = settings.tripMovingSec > 1 ? settings.tripMeters / settings.tripMovingSec * unitsPerMs : 0;
     snprintf(m.lines[i++], 48, "Trip %s \xC2\xB7 max %.0f \xC2\xB7 avg %.0f", m.trip, maxU, avgU);
-    snprintf(m.lines[i++], 48, "Battery %d%%", batteryPct);
+    if (usbPower) snprintf(m.lines[i++], 48, "Battery %d%% \xC2\xB7 USB %.1f V%s", batteryPct, vbusMv / 1000.0f, charging ? " \xC2\xB7 charging" : "");
+    else snprintf(m.lines[i++], 48, "Battery %d%% \xC2\xB7 on battery", batteryPct);
     m.lineCount = i;
   } else if (overlay == Overlay::WifiSetup) {
     strncpy(m.apSsid, netPortalActive() ? netPortalSsid() : "Starting...", sizeof(m.apSsid) - 1);

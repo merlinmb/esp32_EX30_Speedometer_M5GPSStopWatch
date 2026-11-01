@@ -58,7 +58,7 @@ Each tap gives a short buzz. At night with *Auto night* on, changing design is t
 
 In the settings menu: **A** next item, **B** change value, **hold B** to save and exit.
 
-Settings: units, design, auto night, day colours, night colours, brightness (auto or fixed), GPS rate, smoothing, speed alert (off / vibrate / vibrate and tone), alert limit, Wi-Fi on/off, Wi-Fi setup, send to API, reset trip.
+Settings: units, design, auto night, day colours, night colours, brightness (auto or fixed), dim screen, screen off, GPS rate, smoothing, speed alert (off / vibrate / vibrate and tone), alert limit, Wi-Fi on/off, Wi-Fi setup, send to API, reset trip.
 
 ## Designs
 
@@ -87,6 +87,24 @@ The pictures are mock-ups in the default colours (`tools/render_designs.py` draw
 | below -12 deg | Night | 15% |
 
 Changes fade over about 5 seconds. Before the first GPS fix it uses the StopWatch's real-time clock and the last known position. With *Auto night* on, design D comes on when the sun is below -3 deg; you can change that angle on the web page.
+
+## Screen timeout when parked
+
+When the car has been stopped for **3 minutes** the screen dims, and **1 minute** later it switches off. Both times are in settings (*Dim screen*, *Screen off*) and on the web page; 0 turns them off.
+
+- "Stopped" ignores GPS jitter: the timer only resets when the smoothed speed stays above about 3 mph for 3 seconds. No GPS fix (for example in a garage) counts as stopped.
+- It wakes when you drive off, press a key, touch the screen, or when USB power comes back (car switched on). The press or tap that wakes it does nothing else.
+- While the screen is off, GPS, Wi-Fi and the API upload keep running.
+- The timer is paused in the settings menu, Wi-Fi setup and during a firmware update.
+
+## Power: USB or battery
+
+The StopWatch's power chip reports both the USB input voltage and whether the battery is charging, so the firmware knows:
+
+- **plugged in**: USB input above 4 V (it stays "plugged in" when the battery is full and charging has stopped)
+- **charging**: the charger's status line is active
+
+The status page shows, for example, "Battery 85% · USB 5.1 V · charging" or "on battery", and the web page shows the same. Power coming back (the car being switched on) wakes the screen.
 
 ## Speed smoothing
 
