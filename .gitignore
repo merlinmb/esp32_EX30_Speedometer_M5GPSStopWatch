@@ -1,0 +1,15 @@
+# PlatformIO / VS Code
+.pio/
+.vscode/*
+!.vscode/extensions.json
+
+# Secrets and credentials - copy the *_example files and keep the real ones local
+include/secrets.h
+secrets.ini
+*.secrets
+.env
+
+# Test output
+points.jsonl
+__pycache__/
+docs/images/_render.html
