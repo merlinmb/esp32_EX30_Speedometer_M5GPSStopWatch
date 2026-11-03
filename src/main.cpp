@@ -25,6 +25,10 @@
 #include "net.h"
 #include "ui.h"
 
+// M5GFX copies each VLW glyph onto the stack (alloca(w * h)). The largest speed digit is
+// 21.9 KB, far more than the default 8 KB loop stack. Size this as the largest glyph plus margin.
+SET_LOOP_TASK_STACK_SIZE(32 * 1024);
+
 static SpeedFilter filter;
 static StillDetector still;
 static Brightness brightness;
@@ -238,7 +242,12 @@ static void resetTrip() {
 
 static void applySettingsChanges() {
   filter.setLevel((uint8_t)settings.smoothing);
-  if (appliedHz != settings.gpsHz) { gpsSetRate(settings.gpsHz); appliedHz = settings.gpsHz; }
+  filter.setStartGate(settings.startSpeedMs, settings.startHoldMs);
+  if (appliedHz != settings.gpsHz) {
+    Serial.printf("[Settings] GPS update rate: %u Hz\n", settings.gpsHz);
+    gpsSetRate(settings.gpsHz);
+    appliedHz = settings.gpsHz;
+  }
   applyTz();
 }
 
@@ -545,10 +554,14 @@ void setup() {
   M5.Display.setBrightness(255);
   M5.BtnA.setHoldThresh(1000);
   M5.BtnB.setHoldThresh(1000);
+  Serial.println("\n[Boot] EX30 speedometer starting");
 
   settingsLoad();
   applyTz();
   clockFromRtc();
+  Serial.printf("[Boot] Settings loaded: %s, GPS %u Hz, Wi-Fi %s\n",
+                settings.units == Units::MPH ? "mph" : "km/h", settings.gpsHz,
+                settings.wifiEnabled ? "enabled" : "disabled");
 
   uiBegin();
   UiModel splash;
@@ -558,12 +571,17 @@ void setup() {
   strcpy(splash.toast, "Starting GPS...");
   uiRender(splash);
 
+  Serial.println("[Boot] Detecting GPS receiver...");
   gpsBegin();
+  Serial.printf("[Boot] GPS listening on RX G%d at %lu baud\n", gps.rxPin, (unsigned long)gps.baud);
   appliedHz = settings.gpsHz;
   filter.setLevel((uint8_t)settings.smoothing);
+  filter.setStartGate(settings.startSpeedMs, settings.startHoldMs);
 
   telemetryBegin();
   netBegin();
+  Serial.println("[Boot] Network and telemetry tasks started");
+  Serial.println("[Boot] Send 'status' for details; type 'help' for serial commands");
   memset(&lastModel, 0xFF, sizeof(lastModel));
   lastActivityMs = millis();
 }
@@ -580,9 +598,16 @@ void loop() {
     if (M5.Imu.getAccel(&ax, &ay, &az)) still.update(ax, ay, az, now);
   }
 
-  if (gpsPoll()) {
+  bool newSample = gpsPoll();
+  // A fresh fix reports a few mph of speed while standing still. Ignore the speed until the
+  // fix has settled.
+  static uint32_t fixSinceMs = 0;
+  if (!gps.fix) fixSinceMs = 0;
+  else if (!fixSinceMs) fixSinceMs = now;
+  if (newSample) {
     static uint32_t lastSampleMs = 0;
-    filter.addSample(gps.speedMs, now, still.available && still.still());
+    bool trusted = now - fixSinceMs >= (uint32_t)settings.fixSettleSec * 1000;
+    filter.addSample(trusted ? gps.speedMs : 0, now, still.available && still.still());
     float dt = lastSampleMs ? (now - lastSampleMs) / 1000.0f : 0;
     lastSampleMs = now;
     float v = filter.filteredMs();
@@ -604,6 +629,17 @@ void loop() {
   float unitsPerMs = unitsFromMs(1.0f);
   int speedInt = filter.displayInt(unitsPerMs);
   float speedUnits = filter.filteredMs() * unitsPerMs;
+
+  static uint32_t lastDebug = 0;
+  if (now - lastDebug >= 5000) {
+    lastDebug = now;
+    Serial.printf("[Status] GPS %s, fix %s, sats %u, HDOP %.1f, %.1f Hz, speed %.1f %s (raw %.1f) | Wi-Fi %s | screen %s | clock %s\n",
+                  gps.connected ? "data" : "silent", gps.fix ? "yes" : "no", gps.sats, gps.hdop,
+                  gps.measuredHz, speedUnits, unitsLabel(), unitsFromMs(gps.speedMs),
+                  netConnected() ? netIp().c_str() : "disconnected",
+                  screen == Screen::On ? "on" : (screen == Screen::Dimmed ? "dimmed" : "off"),
+                  timeSet ? "synced" : "waiting");
+  }
 
   updatePower(now);
   bool busy = overlay == Overlay::Settings || overlay == Overlay::WifiSetup || netOtaProgress >= 0;

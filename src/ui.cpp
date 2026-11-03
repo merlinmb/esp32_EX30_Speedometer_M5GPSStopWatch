@@ -95,6 +95,12 @@ static uint16_t dim(uint32_t rgb, float k) {
   return lgfx::color565(((rgb >> 16) & 0xFF) * k, ((rgb >> 8) & 0xFF) * k, (rgb & 0xFF) * k);
 }
 
+// "--" with no fix (drawn dimmed) or below the standstill cut-off (drawn in the speed colour)
+static void speedText(const UiModel& m, char* sp, size_t n) {
+  if (m.fix && m.speed > 0) snprintf(sp, n, "%d", m.speed);
+  else snprintf(sp, n, "--");
+}
+
 // ---------------- Design A: Clean (day) ----------------
 static void drawDay(const UiModel& m) {
   const ThemeColours& t = settings.day;
@@ -127,7 +133,7 @@ static void drawDay(const UiModel& m) {
   canvas.setFont(&fSpeed);
   canvas.setTextDatum(textdatum_t::baseline_center);
   char sp[8];
-  if (m.fix) snprintf(sp, sizeof(sp), "%d", m.speed); else strcpy(sp, "--");
+  speedText(m, sp, sizeof(sp));
   canvas.setTextColor(m.fix ? (m.overLimit ? c565(t.alert) : c565(t.speed)) : c565(t.ringTrack) | 0x4208);
   canvas.drawString(sp, CX, 300);
 
@@ -217,7 +223,7 @@ static void drawGauge(const UiModel& m, bool solid) {
   canvas.setFont(&fSpeedM);
   canvas.setTextDatum(textdatum_t::baseline_center);
   char sp[8];
-  if (m.fix) snprintf(sp, sizeof(sp), "%d", m.speed); else strcpy(sp, "--");
+  speedText(m, sp, sizeof(sp));
   canvas.setTextColor(!m.fix ? c565(t.tickMinor) : (m.overLimit ? c565(t.alert) : c565(t.speed)));
   canvas.drawString(sp, CX, 272);
   canvas.setFont(&fLabel);
@@ -310,9 +316,9 @@ static void drawInfo(const UiModel& m) {
   canvas.setFont(&fSpeedM);
   canvas.setTextDatum(textdatum_t::baseline_center);
   char sp[8];
-  if (m.fix) snprintf(sp, sizeof(sp), "%d", m.speed); else strcpy(sp, "--");
+  speedText(m, sp, sizeof(sp));
   canvas.setTextColor(!m.fix ? c565(t.ringTrack) | 0x4208 : (m.overLimit ? c565(t.alert) : c565(t.speed)));
-  canvas.drawString(sp, CX, 206);
+  canvas.drawString(sp, CX, 210);
 
   canvas.setFont(&fSmall);
   canvas.setTextDatum(textdatum_t::middle_center);
@@ -357,7 +363,7 @@ static void drawNight(const UiModel& m) {
   canvas.setFont(&fSpeed);
   canvas.setTextDatum(textdatum_t::baseline_center);
   char sp[8];
-  if (m.fix) snprintf(sp, sizeof(sp), "%d", m.speed); else strcpy(sp, "--");
+  speedText(m, sp, sizeof(sp));
   canvas.setTextColor(m.fix ? (m.overLimit ? c565(t.alert) : c565(t.speed)) : c565(t.status));
   canvas.drawString(sp, CX, 300);
 

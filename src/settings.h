@@ -78,6 +78,11 @@ struct Settings {
   float tripMeters = 0;
   float tripMovingSec = 0;
   float tripMaxMs = 0;
+
+  // Standstill cut-off (added in settings version 5; keep at the end so version 4 data loads)
+  uint8_t fixSettleSec = 5;         // speed counts as 0 for this long after a fix is gained
+  float startSpeedMs = 1.0f;        // ~2.2 mph: to leave standstill, speed must stay above this...
+  uint16_t startHoldMs = 1000;      // ...for this long
 };
 
 extern Settings settings;

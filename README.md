@@ -112,6 +112,10 @@ The status page shows, for example, "Battery 85% · USB 5.1 V · charging" or "o
 - Adaptive smoothing: steady speeds are smoothed, real acceleration passes through quickly. Low / medium / high in settings.
 - The whole number only changes once the speed is clearly past it (0.6 of a unit), so it does not flicker between two values.
 - Standstill: the accelerometer tells when the car is still, so the display reads 0 instead of drifting at 1 to 2 mph.
+- Standstill cut-off: speed counts as 0 for **5 s after a fix is gained** (a fresh fix reports a few mph while still), and to leave standstill the speed must stay above **1.0 m/s (~2.2 mph) for 1 s**. This costs about 1 s when pulling away. Trip, max and average use the same filtered speed, so GPS noise at rest does not reach them. All three values can be changed on the web page (*Display* section).
+- Below the cut-off the speed shows **--** in the normal speed colour; with no fix it shows a dimmed **--**.
+- Speed is never gated on HDOP: a gate on HDOP blocked real speed readings on the Waveshare build.
+- Every 5 s the serial monitor prints a `[Status]` line with fix, satellites, HDOP and the raw and filtered speed, for tuning the cut-off from a log.
 
 ## Wi-Fi and the web page
 
@@ -201,6 +205,8 @@ secrets_example.ini     template for the PlatformIO OTA password
 
 Fonts: Barlow and Barlow Condensed, SIL Open Font License (`tools/fonts/OFL.txt`).
 
+The speed digits are as large as the round screen allows: 270 px for A, D and the update screen, 180 px for B and C, sized so a three-digit speed still clears the ring and dial numbers. M5GFX copies each glyph onto the stack while drawing (the largest is 21.9 KB), so the loop stack is set to 32 KB in `src/main.cpp`. If you make the fonts bigger, raise it to the largest glyph plus a few KB, or the board reboots on the first digit after a fix. `make_vlw.py` needs `freetype-py` (`pip install freetype-py`, ideally in a venv). The README pictures are mock-ups and still show the older, smaller digits.
+
 ## Not yet tested on the hardware
 
 This builds cleanly but has not been run on a StopWatch yet. Things to check on first power-up:
@@ -208,3 +214,4 @@ This builds cleanly but has not been run on a StopWatch yet. Things to check on 
 - the GPS is found (status page shows the RX pin and baud) and the rate reaches about 10 Hz outdoors
 - if your unit is one of the batches reported as 7N1 rather than 8N1, tell me and I will add that to the probe
 - text and ring positions look right on the real screen; positions are in `src/ui.cpp`
+- the standstill cut-off values are estimates: watch the `[Status]` lines while parked and while pulling away, and tune them on the web page

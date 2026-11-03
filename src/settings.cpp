@@ -21,7 +21,8 @@
 Settings settings;
 
 static constexpr uint32_t SETTINGS_MAGIC = 0x53504431;  // "SPD1"
-static constexpr uint16_t SETTINGS_VERSION = 4;
+static constexpr uint16_t SETTINGS_VERSION = 5;
+static constexpr size_t SETTINGS_V4_SIZE = offsetof(Settings, fixSettleSec);  // v5 only appended fields
 
 struct DayPreset { const char* name; ThemeColours c; };
 
@@ -80,6 +81,9 @@ void settingsLoad() {
   size_t len = p.getBytesLength("cfg");
   if (magic == SETTINGS_MAGIC && ver == SETTINGS_VERSION && len == sizeof(Settings)) {
     p.getBytes("cfg", &settings, sizeof(Settings));
+  } else if (magic == SETTINGS_MAGIC && ver == 4 && len == SETTINGS_V4_SIZE) {
+    // Version 4: everything except the cut-off fields, which keep their defaults
+    p.getBytes("cfg", &settings, len);
   }
   p.end();
   // Sanity checks in case of a partly written blob
@@ -89,6 +93,9 @@ void settingsLoad() {
   if (settings.idleOffMin > 60) settings.idleOffMin = 1;
   if (settings.sampleSec < 1) settings.sampleSec = 5;
   if (settings.uploadSec < 2) settings.uploadSec = 10;
+  if (settings.fixSettleSec > 30) settings.fixSettleSec = 5;
+  if (!(settings.startSpeedMs >= 0.6f && settings.startSpeedMs <= 3.0f)) settings.startSpeedMs = 1.0f;
+  if (settings.startHoldMs > 5000) settings.startHoldMs = 1000;
   settings.apiUrl[sizeof(settings.apiUrl) - 1] = 0;
   settings.apiToken[sizeof(settings.apiToken) - 1] = 0;
   settings.tz[sizeof(settings.tz) - 1] = 0;

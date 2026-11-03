@@ -15,8 +15,8 @@ import freetype
 
 FONTS = [
     # (C name, ttf file, pixel size, characters)
-    ("font_speed",  "BarlowCondensed-SemiBold.ttf", 220, "-0123456789"),
-    ("font_speed_m", "BarlowCondensed-SemiBold.ttf", 150, "-0123456789"),
+    ("font_speed",  "BarlowCondensed-SemiBold.ttf", 270, "-0123456789"),
+    ("font_speed_m", "BarlowCondensed-SemiBold.ttf", 180, "-0123456789"),
     ("font_label",  "Barlow-SemiBold.ttf", 22, "".join(chr(c) for c in range(32, 127)) + "°·"),
     ("font_small",  "Barlow-Medium.ttf", 18, "".join(chr(c) for c in range(32, 127)) + "°·"),
     ("font_title",  "Barlow-SemiBold.ttf", 30, "".join(chr(c) for c in range(32, 127)) + "°·"),
