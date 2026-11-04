@@ -51,6 +51,7 @@ button.sec{background:#25303a;color:var(--txt)}
 
 <section><h2>Display</h2>
 <label>Units<select id="units"><option value="0">mph</option><option value="1">km/h</option></select></label>
+<label>Rotation<select id="rotation"><option value="0">0&deg;</option><option value="1">90&deg; clockwise</option><option value="2">180&deg;</option><option value="3">270&deg; clockwise</option></select></label>
 <label>Design<select id="design"><option value="0">A Clean</option><option value="1">B Gauge</option><option value="2">B Gauge solid</option><option value="3">C Info</option><option value="4">D Night</option></select></label>
 <label>Switch to D automatically at night<input type="checkbox" id="autoNight"></label>
 <label>Night below sun angle (deg)<input type="number" id="nightBelowDeg" step="0.5" min="-18" max="10"></label>
@@ -95,7 +96,7 @@ const $=id=>document.getElementById(id);
 function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
 async function get(u){const r=await fetch(u);return r.json()}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return r.json()}
-const FIELDS=['units','design','nightBelowDeg','brightMode','fixedLevel','gpsHz','smoothing','fixSettleSec','startSpeedMs','startHoldMs','alertMode','alertLimit','idleDimMin','idleOffMin','apiUrl','sampleSec','uploadSec','deviceName','tz'];
+const FIELDS=['units','rotation','design','nightBelowDeg','brightMode','fixedLevel','gpsHz','smoothing','fixSettleSec','startSpeedMs','startHoldMs','alertMode','alertLimit','idleDimMin','idleOffMin','apiUrl','sampleSec','uploadSec','deviceName','tz'];
 const CHECKS=['wifiEnabled','telemetryEnabled','preferHome','autoNight'];
 async function load(){S=await get('/api/settings');P=await get('/api/presets');
 FIELDS.forEach(f=>{if($(f))$(f).value=S[f]});CHECKS.forEach(f=>$(f).checked=!!S[f]);

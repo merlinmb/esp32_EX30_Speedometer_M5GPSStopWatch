@@ -83,6 +83,9 @@ struct Settings {
   uint8_t fixSettleSec = 5;         // speed counts as 0 for this long after a fix is gained
   float startSpeedMs = 1.0f;        // ~2.2 mph: to leave standstill, speed must stay above this...
   uint16_t startHoldMs = 1000;      // ...for this long
+
+  // Screen rotation (added in settings version 6): quarter turns clockwise from the board default
+  uint8_t rotation = 3;             // 270 degrees clockwise (90 anticlockwise)
 };
 
 extern Settings settings;

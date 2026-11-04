@@ -40,6 +40,8 @@ static uint32_t toastUntil = 0;
 static int menuIndex = 0;
 static uint8_t lastBrightSent = 0;
 static uint8_t appliedHz = 0;
+static uint8_t baseRotation = 0;   // board default, read after M5.begin()
+static uint8_t appliedRotation = 0xFF;
 static bool timeSet = false;
 static int batteryPct = 0;
 static bool alerted = false;
@@ -240,7 +242,15 @@ static void resetTrip() {
   tripDirty = true;
 }
 
+static void applyRotation() {
+  if (appliedRotation == settings.rotation) return;
+  M5.Display.setRotation((baseRotation + settings.rotation) & 3);
+  appliedRotation = settings.rotation;
+  memset(&lastModel, 0xFF, sizeof(lastModel));   // force a full redraw
+}
+
 static void applySettingsChanges() {
+  applyRotation();
   filter.setLevel((uint8_t)settings.smoothing);
   filter.setStartGate(settings.startSpeedMs, settings.startHoldMs);
   if (appliedHz != settings.gpsHz) {
@@ -552,6 +562,7 @@ void setup() {
   M5.begin(cfg);
   M5.Power.setExtOutput(true);   // make sure the port 5 V is on
   M5.Display.setBrightness(255);
+  baseRotation = M5.Display.getRotation();
   M5.BtnA.setHoldThresh(1000);
   M5.BtnB.setHoldThresh(1000);
   Serial.println("\n[Boot] EX30 speedometer starting");
@@ -563,6 +574,7 @@ void setup() {
                 settings.units == Units::MPH ? "mph" : "km/h", settings.gpsHz,
                 settings.wifiEnabled ? "enabled" : "disabled");
 
+  applyRotation();
   uiBegin();
   UiModel splash;
   memset(&splash, 0, sizeof(splash));

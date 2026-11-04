@@ -39,11 +39,12 @@ void SpeedFilter::addSample(float v, uint32_t now, bool imuStill) {
 
   // Base time constant by smoothing level. The receiver is already Doppler based and
   // accurate, so these are short: the aim is to remove jitter, not to add lag.
-  static const float TAU[3] = {0.20f, 0.45f, 0.90f};
+  // Low passes the receiver's speed straight through; the integer hysteresis still stops flicker.
+  static const float TAU[3] = {0.0f, 0.15f, 0.40f};
   float tau = TAU[_level > 2 ? 2 : _level];
   // Adaptive: a big difference means real acceleration, so follow it faster.
   float err = fabsf(v - _filtered);
-  tau = tau / (1.0f + err / 1.5f);
+  tau = tau / (1.0f + err / 0.75f);
   float alpha = dt / (tau + dt);
   _filtered += alpha * (v - _filtered);
   if (v == 0 && _filtered < 0.3f) _filtered = 0;

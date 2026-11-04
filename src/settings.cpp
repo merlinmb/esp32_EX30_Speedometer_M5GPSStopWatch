@@ -21,8 +21,9 @@
 Settings settings;
 
 static constexpr uint32_t SETTINGS_MAGIC = 0x53504431;  // "SPD1"
-static constexpr uint16_t SETTINGS_VERSION = 5;
+static constexpr uint16_t SETTINGS_VERSION = 6;
 static constexpr size_t SETTINGS_V4_SIZE = offsetof(Settings, fixSettleSec);  // v5 only appended fields
+static constexpr size_t SETTINGS_V5_SIZE = offsetof(Settings, rotation);      // v6 only appended fields
 
 struct DayPreset { const char* name; ThemeColours c; };
 
@@ -81,8 +82,11 @@ void settingsLoad() {
   size_t len = p.getBytesLength("cfg");
   if (magic == SETTINGS_MAGIC && ver == SETTINGS_VERSION && len == sizeof(Settings)) {
     p.getBytes("cfg", &settings, sizeof(Settings));
+  } else if (magic == SETTINGS_MAGIC && ver == 5 && len == SETTINGS_V5_SIZE) {
+    // Version 5: everything except the rotation, which keeps its default
+    p.getBytes("cfg", &settings, len);
   } else if (magic == SETTINGS_MAGIC && ver == 4 && len == SETTINGS_V4_SIZE) {
-    // Version 4: everything except the cut-off fields, which keep their defaults
+    // Version 4: everything except the cut-off fields and rotation, which keep their defaults
     p.getBytes("cfg", &settings, len);
   }
   p.end();
@@ -96,6 +100,7 @@ void settingsLoad() {
   if (settings.fixSettleSec > 30) settings.fixSettleSec = 5;
   if (!(settings.startSpeedMs >= 0.6f && settings.startSpeedMs <= 3.0f)) settings.startSpeedMs = 1.0f;
   if (settings.startHoldMs > 5000) settings.startHoldMs = 1000;
+  if (settings.rotation > 3) settings.rotation = 3;
   settings.apiUrl[sizeof(settings.apiUrl) - 1] = 0;
   settings.apiToken[sizeof(settings.apiToken) - 1] = 0;
   settings.tz[sizeof(settings.tz) - 1] = 0;

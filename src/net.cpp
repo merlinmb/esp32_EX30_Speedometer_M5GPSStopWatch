@@ -89,6 +89,7 @@ static void settingsJson(JsonDocument& d) {
   d["fixSettleSec"] = settings.fixSettleSec;
   d["startSpeedMs"] = settings.startSpeedMs;
   d["startHoldMs"] = settings.startHoldMs;
+  d["rotation"] = settings.rotation;
   d["alertMode"] = (int)settings.alertMode;
   d["alertLimit"] = settings.alertLimit;
   d["idleDimMin"] = settings.idleDimMin;
@@ -142,6 +143,7 @@ static void hPostSettings() {
   if (in["fixSettleSec"].is<int>()) settings.fixSettleSec = constrain(in["fixSettleSec"].as<int>(), 0, 30);
   if (in["startSpeedMs"].is<float>()) settings.startSpeedMs = constrain(in["startSpeedMs"].as<float>(), 0.6f, 3.0f);
   if (in["startHoldMs"].is<int>()) settings.startHoldMs = constrain(in["startHoldMs"].as<int>(), 0, 5000);
+  if (in["rotation"].is<int>()) settings.rotation = constrain(in["rotation"].as<int>(), 0, 3);
   if (in["alertMode"].is<int>()) settings.alertMode = (AlertMode)constrain(in["alertMode"].as<int>(), 0, 2);
   if (in["idleDimMin"].is<int>()) settings.idleDimMin = constrain(in["idleDimMin"].as<int>(), 0, 60);
   if (in["idleOffMin"].is<int>()) settings.idleOffMin = constrain(in["idleOffMin"].as<int>(), 0, 60);
