@@ -62,6 +62,7 @@ button.sec{background:#25303a;color:var(--txt)}
 <label>Ignore speed after a new fix (s)<input type="number" id="fixSettleSec" min="0" max="30" step="1"></label>
 <label>Start moving above (m/s, 1.0 = 2.2 mph)<input type="number" id="startSpeedMs" min="0.6" max="3" step="0.1"></label>
 <label>...for at least (ms)<input type="number" id="startHoldMs" min="0" max="5000" step="100"></label>
+<label>Speed offset (+/- mph or km/h)<input type="number" id="speedOffset" min="-10" max="10" step="1"></label>
 <label>Speed alert<select id="alertMode"><option value="0">Off</option><option value="1">Vibrate</option><option value="2">Vibrate and tone</option></select></label>
 <label>Alert limit (0 = off)<input type="number" id="alertLimit" min="0" max="200" step="1"></label>
 <label>Dim after stopped for (min, 0 = never)<input type="number" id="idleDimMin" min="0" max="60"></label>
@@ -96,7 +97,7 @@ const $=id=>document.getElementById(id);
 function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2200)}
 async function get(u){const r=await fetch(u);return r.json()}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return r.json()}
-const FIELDS=['units','rotation','design','nightBelowDeg','brightMode','fixedLevel','gpsHz','smoothing','fixSettleSec','startSpeedMs','startHoldMs','alertMode','alertLimit','idleDimMin','idleOffMin','apiUrl','sampleSec','uploadSec','deviceName','tz'];
+const FIELDS=['units','rotation','design','nightBelowDeg','brightMode','fixedLevel','gpsHz','smoothing','fixSettleSec','startSpeedMs','startHoldMs','speedOffset','alertMode','alertLimit','idleDimMin','idleOffMin','apiUrl','sampleSec','uploadSec','deviceName','tz'];
 const CHECKS=['wifiEnabled','telemetryEnabled','preferHome','autoNight'];
 async function load(){S=await get('/api/settings');P=await get('/api/presets');
 FIELDS.forEach(f=>{if($(f))$(f).value=S[f]});CHECKS.forEach(f=>$(f).checked=!!S[f]);

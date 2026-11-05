@@ -86,6 +86,9 @@ struct Settings {
 
   // Screen rotation (added in settings version 6): quarter turns clockwise from the board default
   uint8_t rotation = 3;             // 270 degrees clockwise (90 anticlockwise)
+
+  // Speed offset (added in settings version 7): whole display units added to the shown speed
+  int8_t speedOffset = 0;           // -10..+10
 };
 
 extern Settings settings;

@@ -640,6 +640,7 @@ void loop() {
 
   float unitsPerMs = unitsFromMs(1.0f);
   int speedInt = filter.displayInt(unitsPerMs);
+  if (speedInt > 0) speedInt = max(1, speedInt + settings.speedOffset);  // user calibration
   float speedUnits = filter.filteredMs() * unitsPerMs;
 
   static uint32_t lastDebug = 0;

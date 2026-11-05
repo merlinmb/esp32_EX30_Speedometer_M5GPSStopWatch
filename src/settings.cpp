@@ -21,9 +21,12 @@
 Settings settings;
 
 static constexpr uint32_t SETTINGS_MAGIC = 0x53504431;  // "SPD1"
-static constexpr uint16_t SETTINGS_VERSION = 6;
+static constexpr uint16_t SETTINGS_VERSION = 7;
 static constexpr size_t SETTINGS_V4_SIZE = offsetof(Settings, fixSettleSec);  // v5 only appended fields
 static constexpr size_t SETTINGS_V5_SIZE = offsetof(Settings, rotation);      // v6 only appended fields
+// v7 only appended speedOffset; the v6 struct size was its end rounded up to the struct alignment
+static constexpr size_t SETTINGS_V6_SIZE =
+    (offsetof(Settings, speedOffset) + alignof(Settings) - 1) / alignof(Settings) * alignof(Settings);
 
 struct DayPreset { const char* name; ThemeColours c; };
 
@@ -82,6 +85,10 @@ void settingsLoad() {
   size_t len = p.getBytesLength("cfg");
   if (magic == SETTINGS_MAGIC && ver == SETTINGS_VERSION && len == sizeof(Settings)) {
     p.getBytes("cfg", &settings, sizeof(Settings));
+  } else if (magic == SETTINGS_MAGIC && ver == 6 && len == SETTINGS_V6_SIZE && len <= sizeof(Settings)) {
+    // Version 6: everything except the speed offset, which may sit in old padding bytes
+    p.getBytes("cfg", &settings, len);
+    settings.speedOffset = 0;
   } else if (magic == SETTINGS_MAGIC && ver == 5 && len == SETTINGS_V5_SIZE) {
     // Version 5: everything except the rotation, which keeps its default
     p.getBytes("cfg", &settings, len);
@@ -101,6 +108,7 @@ void settingsLoad() {
   if (!(settings.startSpeedMs >= 0.6f && settings.startSpeedMs <= 3.0f)) settings.startSpeedMs = 1.0f;
   if (settings.startHoldMs > 5000) settings.startHoldMs = 1000;
   if (settings.rotation > 3) settings.rotation = 3;
+  if (settings.speedOffset < -10 || settings.speedOffset > 10) settings.speedOffset = 0;
   settings.apiUrl[sizeof(settings.apiUrl) - 1] = 0;
   settings.apiToken[sizeof(settings.apiToken) - 1] = 0;
   settings.tz[sizeof(settings.tz) - 1] = 0;

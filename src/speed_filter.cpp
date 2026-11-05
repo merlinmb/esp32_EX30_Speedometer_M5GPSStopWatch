@@ -63,8 +63,10 @@ void SpeedFilter::tick(uint32_t now) {
 int SpeedFilter::displayInt(float unitsPerMs) {
   float u = _filtered * unitsPerMs;
   if (u < 0.5f) { _shown = 0; return 0; }
+  // Round up, as a speedometer should never under-read: rounding u + 0.5 to nearest is ceil(u).
   // Only move to a new integer once we are clearly past it.
-  if (u > _shown + HYSTERESIS || u < _shown - HYSTERESIS) _shown = (int)lroundf(u);
+  float r = u + 0.5f;
+  if (r > _shown + HYSTERESIS || r < _shown - HYSTERESIS) _shown = (int)lroundf(r);
   return _shown;
 }
 
