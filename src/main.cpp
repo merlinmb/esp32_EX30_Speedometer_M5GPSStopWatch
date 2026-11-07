@@ -9,8 +9,9 @@
 //   Key B hold 1 s     settings menu
 //   A + B hold 2 s     set speed alert to current speed (nearest 10); when stopped, clear it
 // Touch zones: centre = status page on/off, top = brighter, bottom = dimmer,
-//              right = next design, left = previous design
+//              right = next design, left = previous design, hold centre 1 s = settings menu
 // In settings: A next item, B change value, hold B save and exit.
+//   Touch: left / right = previous / next item, tap the value to change it, bottom = save and exit.
 // Stopped for 'Dim screen' minutes -> dims; 'Screen off' minutes later -> display off.
 // Movement over ~3 mph for 3 s, USB power returning, or any key/touch wakes it.
 
@@ -183,7 +184,7 @@ static void vWifi(char* b, size_t n) {
   else snprintf(b, n, "On, not connected");
 }
 static void cWifi() { settings.wifiEnabled = !settings.wifiEnabled; }
-static void vSetup(char* b, size_t n) { snprintf(b, n, "Press B to start"); }
+static void vSetup(char* b, size_t n) { snprintf(b, n, "Tap to start"); }
 static void cSetup() { netStartPortal(); overlay = Overlay::WifiSetup; }
 static void vTele(char* b, size_t n) {
   if (!settings.apiUrl[0]) snprintf(b, n, "Set URL on web page");
@@ -211,7 +212,7 @@ static void cIdleOff() {
   settings.idleOffMin = V[(i + 1) % 6];
 }
 static void resetTrip();
-static void vTrip(char* b, size_t n) { snprintf(b, n, "Press B to reset"); }
+static void vTrip(char* b, size_t n) { snprintf(b, n, "Tap to reset"); }
 static void cTrip() { resetTrip(); showToast("Trip reset"); }
 
 static const MenuItem MENU[] = {
@@ -233,6 +234,20 @@ static const MenuItem MENU[] = {
   {"Trip", vTrip, cTrip},
 };
 static constexpr int MENU_COUNT = sizeof(MENU) / sizeof(MENU[0]);
+
+static void applySettingsChanges();
+// Menu actions, shared by the keys and the touch screen
+static void openSettings() { overlay = Overlay::Settings; menuIndex = 0; vibrate({40}); }
+static void menuStep(int dir) { menuIndex = (menuIndex + MENU_COUNT + dir) % MENU_COUNT; vibrate({25}); }
+static void menuChange() { MENU[menuIndex].change(); applySettingsChanges(); vibrate({25}); }
+static void menuSaveExit() {
+  settingsSave();
+  applySettingsChanges();
+  if (overlay == Overlay::Settings) overlay = Overlay::None;
+  showToast("Settings saved");
+  vibrate({50, 70, 50});
+}
+static void closeWifiSetup() { netStopPortal(); overlay = Overlay::None; vibrate({40}); }
 
 // ---------------- trip ----------------
 static void resetTrip() {
@@ -314,6 +329,7 @@ static void updateIdle(uint32_t now, float speedMs, bool busy) {
   if (screen == Screen::Dimmed && settings.idleOffMin && idle >= offAt) {
     screen = Screen::Off;
     M5.Display.sleep();
+    if (settings.resetTripOnSleep) resetTrip();   // parked long enough: next drive starts a new trip
   }
 
   // Ease the dim level so it fades rather than jumps
@@ -418,19 +434,13 @@ static void handleButtons(uint32_t now, float speedUnits) {
   }
 
   if (overlay == Overlay::Settings) {
-    if (A.wasSingleClicked() || A.wasDoubleClicked()) { menuIndex = (menuIndex + 1) % MENU_COUNT; vibrate({25}); }
-    if (B.wasSingleClicked() || B.wasDoubleClicked()) { MENU[menuIndex].change(); applySettingsChanges(); vibrate({25}); }
-    if (B.wasHold()) {
-      settingsSave();
-      applySettingsChanges();
-      if (overlay == Overlay::Settings) overlay = Overlay::None;
-      showToast("Settings saved");
-      vibrate({50, 70, 50});
-    }
+    if (A.wasSingleClicked() || A.wasDoubleClicked()) menuStep(+1);
+    if (B.wasSingleClicked() || B.wasDoubleClicked()) menuChange();
+    if (B.wasHold()) menuSaveExit();
     return;
   }
   if (overlay == Overlay::WifiSetup) {
-    if (B.wasHold() || A.wasHold()) { netStopPortal(); overlay = Overlay::None; vibrate({40}); }
+    if (B.wasHold() || A.wasHold()) closeWifiSetup();
     return;
   }
   if (overlay == Overlay::Status) {
@@ -455,15 +465,31 @@ static void handleButtons(uint32_t now, float speedUnits) {
     tripDirty = true;  // saved with the next periodic save
     vibrate({25});
   }
-  if (B.wasHold()) { overlay = Overlay::Settings; menuIndex = 0; vibrate({40}); }
+  if (B.wasHold()) openSettings();
 
 }
 
+// Settings by touch, matching the layout in drawSettings(): bottom band = Save button,
+// left / right edges = previous / next setting arrows, middle band = the value (tap to change).
+// Wi-Fi setup: bottom = close. Driving screen: hold centre 1 s = settings.
 static void handleTouch(uint32_t now) {
-  if (overlay == Overlay::Settings || overlay == Overlay::WifiSetup || netOtaProgress >= 0) return;
+  if (netOtaProgress >= 0) return;
   auto t = M5.Touch.getDetail();
-  if (!t.wasClicked()) return;
   Zone z = touchZone(t.x, t.y);
+  if (overlay == Overlay::Settings) {
+    if (!t.wasClicked()) return;
+    if (t.y >= 320) menuSaveExit();
+    else if (t.x < 110) menuStep(-1);
+    else if (t.x > 356) menuStep(+1);
+    else if (t.y >= 205) menuChange();
+    return;
+  }
+  if (overlay == Overlay::WifiSetup) {
+    if (t.wasClicked() && z == Zone::South) closeWifiSetup();
+    return;
+  }
+  if (overlay == Overlay::None && t.wasHold() && z == Zone::Centre) { openSettings(); return; }
+  if (!t.wasClicked()) return;
   if (overlay == Overlay::Status) {           // any tap closes the status page
     overlay = Overlay::None;
     vibrate({20});
@@ -565,6 +591,7 @@ void setup() {
   baseRotation = M5.Display.getRotation();
   M5.BtnA.setHoldThresh(1000);
   M5.BtnB.setHoldThresh(1000);
+  M5.Touch.setHoldThresh(1000);
   Serial.println("\n[Boot] EX30 speedometer starting");
 
   settingsLoad();

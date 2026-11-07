@@ -67,6 +67,7 @@ button.sec{background:#25303a;color:var(--txt)}
 <label>Alert limit (0 = off)<input type="number" id="alertLimit" min="0" max="200" step="1"></label>
 <label>Dim after stopped for (min, 0 = never)<input type="number" id="idleDimMin" min="0" max="60"></label>
 <label>Then screen off after (min, 0 = stay dim)<input type="number" id="idleOffMin" min="0" max="60"></label>
+<label>Reset trip when the screen turns off<input type="checkbox" id="resetTripOnSleep"></label>
 </section>
 
 <section><h2>Colours</h2>
@@ -98,7 +99,7 @@ function toast(t){const e=$('toast');e.textContent=t;e.style.display='block';set
 async function get(u){const r=await fetch(u);return r.json()}
 async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return r.json()}
 const FIELDS=['units','rotation','design','nightBelowDeg','brightMode','fixedLevel','gpsHz','smoothing','fixSettleSec','startSpeedMs','startHoldMs','speedOffset','alertMode','alertLimit','idleDimMin','idleOffMin','apiUrl','sampleSec','uploadSec','deviceName','tz'];
-const CHECKS=['wifiEnabled','telemetryEnabled','preferHome','autoNight'];
+const CHECKS=['wifiEnabled','telemetryEnabled','preferHome','autoNight','resetTripOnSleep'];
 async function load(){S=await get('/api/settings');P=await get('/api/presets');
 FIELDS.forEach(f=>{if($(f))$(f).value=S[f]});CHECKS.forEach(f=>$(f).checked=!!S[f]);
 renderSaved();tab(cur)}

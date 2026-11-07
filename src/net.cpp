@@ -1,6 +1,7 @@
 #include "net.h"
 #include "settings.h"
 #include "telemetry.h"
+#include "mqtt.h"
 #include "web_page.h"
 #include <WiFi.h>
 #include <WebServer.h>
@@ -91,6 +92,7 @@ static void settingsJson(JsonDocument& d) {
   d["startHoldMs"] = settings.startHoldMs;
   d["rotation"] = settings.rotation;
   d["speedOffset"] = settings.speedOffset;
+  d["resetTripOnSleep"] = settings.resetTripOnSleep;
   d["alertMode"] = (int)settings.alertMode;
   d["alertLimit"] = settings.alertLimit;
   d["idleDimMin"] = settings.idleDimMin;
@@ -146,6 +148,7 @@ static void hPostSettings() {
   if (in["startHoldMs"].is<int>()) settings.startHoldMs = constrain(in["startHoldMs"].as<int>(), 0, 5000);
   if (in["rotation"].is<int>()) settings.rotation = constrain(in["rotation"].as<int>(), 0, 3);
   if (in["speedOffset"].is<int>()) settings.speedOffset = constrain(in["speedOffset"].as<int>(), -10, 10);
+  if (in["resetTripOnSleep"].is<bool>()) settings.resetTripOnSleep = in["resetTripOnSleep"];
   if (in["alertMode"].is<int>()) settings.alertMode = (AlertMode)constrain(in["alertMode"].as<int>(), 0, 2);
   if (in["idleDimMin"].is<int>()) settings.idleDimMin = constrain(in["idleDimMin"].as<int>(), 0, 60);
   if (in["idleOffMin"].is<int>()) settings.idleOffMin = constrain(in["idleOffMin"].as<int>(), 0, 60);
@@ -471,11 +474,15 @@ static void netTask(void*) {
       startServer();      // settings page also reachable on the phone/home network
       startArduinoOta();  // PlatformIO uploads over Wi-Fi
       ArduinoOTA.handle();
+      mqttLoop();
     }
 
     wl_status_t status = WiFi.status();
     if (status != previousStatus) {
-      if (status == WL_CONNECTED) Serial.printf("[Wi-Fi] Link up, IP %s\n", WiFi.localIP().toString().c_str());
+      if (status == WL_CONNECTED) {
+        Serial.printf("[Wi-Fi] Link up, IP %s\n", WiFi.localIP().toString().c_str());
+        mqttOnWifiConnected();
+      }
       else Serial.printf("[Wi-Fi] Link state changed: %d\n", (int)status);
       previousStatus = status;
     }

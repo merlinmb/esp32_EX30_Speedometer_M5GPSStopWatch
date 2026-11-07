@@ -42,6 +42,7 @@ The round screen is split into five zones:
 - **Centre** (the middle circle, about a third of the screen): status page on / off
 - **Top**: brightness one step up. **Bottom**: one step down. This moves you up or down from the automatic level, and resets when you choose Auto again with Key B
 - **Right**: next design. **Left**: previous design (A, B1, B2, C, D, then round again)
+- **Hold the centre 1 s**: settings menu
 
 Each tap gives a short buzz. At night with *Auto night* on, changing design is temporary: it goes back to D the next night, and to your daytime design in the morning.
 
@@ -56,7 +57,7 @@ Each tap gives a short buzz. At night with *Auto night* on, changing design is t
 | B | Hold 1 s | Settings menu |
 | A + B | Hold 2 s | Set the speed alert to your current speed, rounded to 10. Do it while stopped to switch the alert off |
 
-In the settings menu: **A** next item, **B** change value, **hold B** to save and exit.
+In the settings menu: **A** next item, **B** change value, **hold B** to save and exit. Or use the touch screen: tap the **left / right arrows** for the previous / next setting, tap the **value** to change it, and tap **Save** to save and exit. In Wi-Fi setup, tap **Close** (or hold a key) to close it.
 
 Settings: units, design, auto night, day colours, night colours, brightness (auto or fixed), dim screen, screen off, GPS rate, smoothing, speed alert (off / vibrate / vibrate and tone), alert limit, Wi-Fi on/off, Wi-Fi setup, send to API, reset trip.
 
@@ -90,7 +91,7 @@ Changes fade over about 5 seconds. Before the first GPS fix it uses the StopWatc
 
 ## Screen timeout when parked
 
-When the car has been stopped for **3 minutes** the screen dims, and **1 minute** later it switches off. Both times are in settings (*Dim screen*, *Screen off*) and on the web page; 0 turns them off.
+When the car has been stopped for **3 minutes** the screen dims, and **1 minute** later it switches off. Both times are in settings (*Dim screen*, *Screen off*) and on the web page; 0 turns them off. When the screen switches off, the trip (distance, max and average) is also reset, so each drive starts a new trip; turn this off on the web page with *Reset trip when the screen turns off*.
 
 - "Stopped" ignores GPS jitter: the timer only resets when the smoothed speed stays above about 3 mph for 3 seconds. No GPS fix (for example in a garage) counts as stopped.
 - It wakes when you drive off, press a key, touch the screen, or when USB power comes back (car switched on). The press or tap that wakes it does nothing else.

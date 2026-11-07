@@ -89,6 +89,9 @@ struct Settings {
 
   // Speed offset (added in settings version 7): whole display units added to the shown speed
   int8_t speedOffset = 0;           // -10..+10
+
+  // Auto trip reset (added in settings version 8): clear the trip when the screen turns off while parked
+  bool resetTripOnSleep = true;
 };
 
 extern Settings settings;

@@ -396,14 +396,30 @@ static void drawSettings(const UiModel& m) {
 
   canvas.setFont(&fTitle);
   canvas.setTextColor(c565(t.speed));
-  canvas.drawString(m.setTitle, CX, 190);
-  canvas.setTextColor(c565(t.ringFill));
+  canvas.drawString(m.setTitle, CX, 180);
+
+  // Value in an outlined pill: tap it to change the value
+  uint16_t accent = c565(t.ringFill);
+  int pw = min(canvas.textWidth(m.setValue) + 48, 300), ph = 56;
+  canvas.drawRoundRect(CX - pw / 2, 250 - ph / 2, pw, ph, ph / 2, accent);
+  canvas.drawRoundRect(CX - pw / 2 + 1, 250 - ph / 2 + 1, pw - 2, ph - 2, ph / 2 - 1, accent);
+  canvas.setTextColor(accent);
   canvas.drawString(m.setValue, CX, 250);
+
+  // Previous / next setting arrows (left and right touch zones)
+  uint16_t arrow = c565(t.status);
+  canvas.fillTriangle(30, CY, 52, CY - 22, 52, CY + 22, arrow);
+  canvas.fillTriangle(W - 30, CY, W - 52, CY - 22, W - 52, CY + 22, arrow);
+
+  // Save button (bottom touch zone)
+  canvas.fillRoundRect(CX - 70, 340, 140, 46, 23, accent);
+  canvas.setFont(&fLabel);
+  canvas.setTextColor(c565(t.background));
+  canvas.drawString("Save", CX, 363);
 
   canvas.setFont(&fSmall);
   canvas.setTextColor(c565(t.info));
-  canvas.drawString("A next  \xC2\xB7  B change", CX, 340);
-  canvas.drawString("Hold B to save and exit", CX, 372);
+  canvas.drawString("Keys: A next \xC2\xB7 B change \xC2\xB7 hold B save", CX, 410);
 }
 
 static void drawStatus(const UiModel& m) {
@@ -441,8 +457,11 @@ static void drawWifiSetup(const UiModel& m) {
   canvas.setTextColor(c565(t.ringFill));
   canvas.drawString("Then open http://192.168.4.1", CX, 352);
   canvas.setTextColor(c565(t.info));
-  canvas.drawString(m.staLine, CX, 384);
-  canvas.drawString("Hold B to close", CX, 412);
+  canvas.drawString(m.staLine, CX, 380);
+  // Close button (bottom touch zone; holding a key also closes)
+  canvas.fillRoundRect(CX - 60, 398, 120, 38, 19, c565(t.ringFill));
+  canvas.setTextColor(c565(t.background));
+  canvas.drawString("Close", CX, 417);
 }
 
 static void drawUpdate(const UiModel& m) {
